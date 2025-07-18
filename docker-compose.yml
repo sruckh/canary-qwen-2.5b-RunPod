@@ -2,9 +2,12 @@ version: '3.8'
 
 services:
   canary-qwen:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Use pre-built image from Docker Hub
+    image: gemneye/canary-qwen-2.5b-runpod:latest
+    # Uncomment to build locally instead:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: canary-qwen-2.5b
     ports:
       - "7860:7860"

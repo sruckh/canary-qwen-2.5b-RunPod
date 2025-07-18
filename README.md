@@ -2,6 +2,10 @@
 
 A dockerized deployment of NVIDIA's Canary-Qwen-2.5B speech recognition model for RunPod, featuring a Gradio interface for audio transcription and LLM-powered text analysis.
 
+[![Docker Hub](https://img.shields.io/docker/pulls/gemneye/canary-qwen-2.5b-runpod?logo=docker)](https://hub.docker.com/r/gemneye/canary-qwen-2.5b-runpod)
+[![Build Status](https://github.com/sruckh/canary-qwen-2.5b-RunPod/actions/workflows/docker-build.yml/badge.svg)](https://github.com/sruckh/canary-qwen-2.5b-RunPod/actions/workflows/docker-build.yml)
+[![License](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
 ## 🎯 Overview
 
 This container provides:
@@ -14,7 +18,7 @@ This container provides:
 
 ### 1. Deploy Container
 ```bash
-# Use the built container image
+# Use the built container image from Docker Hub
 docker run -d \
   --name canary-qwen \
   --gpus all \
@@ -23,7 +27,7 @@ docker run -d \
   -v /workspace/cache:/root/.cache:rw \
   -v /workspace/data:/data:rw \
   -e GRADIO_SHARE=true \
-  your-registry/canary-qwen-2.5b:latest
+  gemneye/canary-qwen-2.5b-runpod:latest
 ```
 
 ### 2. Environment Variables
@@ -105,8 +109,8 @@ This will:
 ### Building the Container
 ```bash
 # Clone and build
-git clone <your-repo>
-cd canary-qwen-2.5b
+git clone https://github.com/sruckh/canary-qwen-2.5b-RunPod.git
+cd canary-qwen-2.5b-RunPod
 docker build -t canary-qwen-2.5b .
 ```
 
