@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     ffmpeg \
     libsndfile1 \
+    sox \
+    libsox-dev \
     wget \
     curl \
     git \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Update pip to latest version
@@ -23,6 +26,9 @@ WORKDIR /app
 
 # Copy requirements first for better layer caching
 COPY requirements.txt .
+
+# Install numpy first (required by sox during setup)
+RUN pip3 install --no-cache-dir numpy>=1.24.0
 
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
