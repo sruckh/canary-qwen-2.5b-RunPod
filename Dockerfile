@@ -27,8 +27,13 @@ WORKDIR /app
 # Copy requirements first for better layer caching
 COPY requirements.txt .
 
-# Install numpy first (required by sox during setup)
-RUN pip3 install --no-cache-dir numpy>=1.24.0
+# Install core dependencies first (required by sox and other packages during setup)
+RUN pip3 install --no-cache-dir \
+    numpy>=1.24.0 \
+    typing_extensions \
+    setuptools \
+    wheel \
+    cython
 
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
