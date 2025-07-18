@@ -30,12 +30,7 @@ class CanaryQwenInterface:
             from nemo.collections.speechlm2.models import SALM
             
             logger.info("Loading Canary-Qwen-2.5B model...")
-            if os.path.exists(MODEL_PATH):
-                # Load from local path
-                self.model = SALM.restore_from(MODEL_PATH)
-            else:
-                # Load from HuggingFace
-                self.model = SALM.from_pretrained('nvidia/canary-qwen-2.5b')
+            self.model = SALM.from_pretrained(MODEL_PATH)
             
             self.model.eval()
             logger.info("Model loaded successfully!")

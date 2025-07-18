@@ -17,42 +17,19 @@ This container provides:
 ## 🚀 Quick Start on RunPod
 
 ### 1. Deploy Container
+To deploy, use the following command, which mounts a local directory for caching:
+
 ```bash
 # Use the built container image from Docker Hub
 docker run -d \
   --name canary-qwen \
   --gpus all \
   -p 7860:7860 \
-  -v /workspace/models:/models:ro \
   -v /workspace/cache:/root/.cache:rw \
-  -v /workspace/data:/data:rw \
   -e GRADIO_SHARE=true \
   gemneye/canary-qwen-2.5b-runpod:latest
 ```
 
-### 2. Environment Variables
-Configure these in your RunPod environment:
-```bash
-GRADIO_SHARE=true          # Enable/disable Gradio share links
-GRADIO_SERVER_NAME=0.0.0.0 # Server bind address
-GRADIO_SERVER_PORT=7860    # Server port
-MODEL_PATH=/models/canary-qwen-2.5b  # Model location
-```
-
-### 3. Setup RunPod Host
-First, prepare the RunPod host with models and dependencies:
-```bash
-# Upload and run the setup script
-chmod +x setup_runpod.sh
-./setup_runpod.sh
-```
-
-This will:
-- Install system dependencies
-- Create Python virtual environment
-- Download the Canary-Qwen-2.5B model
-- Set up directory structure
-- Configure environment variables
 
 ## 📁 Directory Structure
 
