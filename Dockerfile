@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1-runtime-ubuntu20.04
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
 
 # Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
