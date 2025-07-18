@@ -5,9 +5,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.9 \
-    python3.9-pip \
-    python3.9-dev \
+    python3 \
+    python3-pip \
+    python3-dev \
     ffmpeg \
     libsndfile1 \
     wget \
@@ -15,9 +15,8 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set python3.9 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
-RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.9 1
+# Update pip to latest version
+RUN pip3 install --upgrade pip
 
 # Create app directory
 WORKDIR /app
