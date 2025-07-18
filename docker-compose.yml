@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  canary-qwen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: canary-qwen-2.5b
+    ports:
+      - "7860:7860"
+    volumes:
+      # Mount models directory from host (RunPod setup)
+      - /workspace/models:/models:ro
+      # Mount cache directory for HuggingFace models
+      - /workspace/cache:/root/.cache:rw
+      # Mount data directory for temporary files
+      - /workspace/data:/data:rw
+      # Mount logs directory
+      - /workspace/logs:/app/logs:rw
+    environment:
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - GRADIO_SERVER_PORT=7860
+      - GRADIO_SHARE=${GRADIO_SHARE:-false}
+      - MODEL_PATH=/models/canary-qwen-2.5b
+      - HF_HOME=/root/.cache
+      - TRANSFORMERS_CACHE=/root/.cache
+      - HF_DATASETS_CACHE=/root/.cache
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    
+    # Runtime configuration for GPU access
+    runtime: nvidia
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+# Note: This compose file is designed for RunPod deployment
+# The host directories (/workspace/*) are expected to be set up by setup_runpod.sh
+# For local development without GPU, comment out the deploy and runtime sections
