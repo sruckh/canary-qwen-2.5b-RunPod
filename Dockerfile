@@ -22,8 +22,8 @@ RUN python3 -m pip install numpy typing_extensions
 # Install NeMo toolkit exactly as documented
 RUN python3 -m pip install "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git"
 
-# Install gradio for the interface
-RUN python3 -m pip install gradio
+# Install missing NeMo dependency and gradio
+RUN python3 -m pip install sacrebleu gradio
 
 # Set working directory
 WORKDIR /app
