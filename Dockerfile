@@ -2,39 +2,27 @@ FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install essential system dependencies
+# Install Python and basic dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
-    python3-dev \
-    ffmpeg \
-    libsndfile1 \
-    sox \
     git \
-    build-essential \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip
 
-# Install Python dependencies, including NeMo toolkit and Gradio
-RUN python3 -m pip install --no-cache-dir \
-    "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git" \
-    gradio \
-    librosa \
-    soundfile
+# Install NeMo toolkit exactly as documented
+RUN python3 -m pip install "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git"
 
-# Create a non-root user for security
-RUN useradd -m -u 1000 -s /bin/bash appuser
-USER appuser
-WORKDIR /home/appuser/app
+# Install gradio for the interface
+RUN python3 -m pip install gradio
 
-# Set HuggingFace cache directory and pre-download the model as the app user
-ENV HF_HOME=/home/appuser/.cache/huggingface
-RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='nvidia/canary-qwen-2.5b', cache_dir=f'{HF_HOME}')"
+# Set working directory
+WORKDIR /app
 
 # Copy application code
-COPY --chown=appuser:appuser app.py .
+COPY app.py .
 
 # Set environment variables for Gradio
 ENV GRADIO_SERVER_NAME="0.0.0.0"

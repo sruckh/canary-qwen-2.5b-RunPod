@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 GRADIO_SHARE = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 GRADIO_SERVER_NAME = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
 GRADIO_SERVER_PORT = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
-MODEL_PATH = os.getenv("MODEL_PATH", "/models/canary-qwen-2.5b")
+# Model will be loaded directly from HuggingFace Hub
 
 class CanaryQwenInterface:
     def __init__(self):
