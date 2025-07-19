@@ -30,7 +30,8 @@ class CanaryQwenInterface:
             from nemo.collections.speechlm2.models import SALM
             
             logger.info("Loading Canary-Qwen-2.5B model...")
-            self.model = SALM.from_pretrained(MODEL_PATH)
+            # Use the model ID directly - it will automatically use cached version
+            self.model = SALM.from_pretrained('nvidia/canary-qwen-2.5b')
             
             self.model.eval()
             logger.info("Model loaded successfully!")

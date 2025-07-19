@@ -1,58 +1,44 @@
 FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
 
-# Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install essential system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
     ffmpeg \
     libsndfile1 \
     sox \
-    libsox-dev \
-    wget \
-    curl \
     git \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Update pip to latest version
-RUN pip3 install --upgrade pip
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
 
-# Create app directory
-WORKDIR /app
+# Install Python dependencies, including NeMo toolkit and Gradio
+RUN python3 -m pip install --no-cache-dir \
+    "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git" \
+    gradio \
+    librosa \
+    soundfile
 
-# Copy requirements first for better layer caching
-COPY requirements.txt .
+# Create a non-root user for security
+RUN useradd -m -u 1000 -s /bin/bash appuser
+USER appuser
+WORKDIR /home/appuser/app
 
-# Install core dependencies first (required by sox and other packages during setup)
-RUN pip3 install --no-cache-dir \
-    numpy>=1.24.0 \
-    typing_extensions \
-    setuptools \
-    wheel \
-    cython
-
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Set HuggingFace cache directory and pre-download the model as the app user
+ENV HF_HOME=/home/appuser/.cache/huggingface
+RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='nvidia/canary-qwen-2.5b', cache_dir=f'{HF_HOME}')"
 
 # Copy application code
-COPY app.py .
-COPY download_model.py .
+COPY --chown=appuser:appuser app.py .
 
-# Download the model
-RUN python3 download_model.py
-
-# Create directories for models and data (will be mounted from host)
-RUN mkdir -p /models /data
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV GRADIO_SERVER_NAME=0.0.0.0
-ENV GRADIO_SERVER_PORT=7860
-ENV GRADIO_SHARE=false
+# Set environment variables for Gradio
+ENV GRADIO_SERVER_NAME="0.0.0.0"
+ENV GRADIO_SERVER_PORT="7860"
 
 # Expose port
 EXPOSE 7860
