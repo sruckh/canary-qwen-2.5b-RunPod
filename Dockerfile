@@ -2,15 +2,24 @@ FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python and basic dependencies
+# Install system dependencies including sox
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    python3-dev \
     git \
+    sox \
+    libsox-dev \
+    ffmpeg \
+    libsndfile1 \
+    build-essential \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip
+
+# Install numpy first (required by sox dependency)
+RUN python3 -m pip install numpy
 
 # Install NeMo toolkit exactly as documented
 RUN python3 -m pip install "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git"
