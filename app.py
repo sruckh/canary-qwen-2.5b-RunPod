@@ -37,10 +37,17 @@ class CanaryQwenInterface:
             # Use the model ID directly - it will automatically use cached version
             self.model = SALM.from_pretrained('nvidia/canary-qwen-2.5b')
             
-            # Move model to GPU if available
+            # Configure model for GPU usage
             if self.device == "cuda":
-                self.model.cuda()
+                # Move model to GPU using NeMo's method
+                self.model = self.model.to('cuda')
                 logger.info("Model moved to GPU")
+                
+                # Set trainer to use GPU
+                import pytorch_lightning as pl
+                if hasattr(self.model, 'trainer'):
+                    self.model.trainer = pl.Trainer(accelerator='gpu', devices=1)
+                    logger.info("NeMo trainer configured for GPU")
             
             self.model.eval()
             logger.info("Model loaded successfully!")
@@ -84,6 +91,9 @@ class CanaryQwenInterface:
             processed_audio = self.preprocess_audio(audio_path)
             
             # Transcribe using ASR mode
+            if self.device == "cuda":
+                logger.info(f"GPU memory before inference: {torch.cuda.memory_allocated() / 1024**2:.1f} MB")
+            
             prompt = [{"role": "user", "content": f"Transcribe the following: {self.model.audio_locator_tag}", "audio": [processed_audio]}]
             
             answer_ids = self.model.generate(
@@ -92,6 +102,9 @@ class CanaryQwenInterface:
                 temperature=0.1,
                 top_p=0.9
             )
+            
+            if self.device == "cuda":
+                logger.info(f"GPU memory after inference: {torch.cuda.memory_allocated() / 1024**2:.1f} MB")
             
             # Decode the response
             transcript = self.model.tokenizer.ids_to_text(answer_ids[0].cpu())
