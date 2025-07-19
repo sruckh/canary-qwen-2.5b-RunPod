@@ -22,7 +22,11 @@ class CanaryQwenInterface:
     def __init__(self):
         self.model = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.last_transcript = ""
         logger.info(f"Using device: {self.device}")
+        if torch.cuda.is_available():
+            logger.info(f"GPU detected: {torch.cuda.get_device_name(0)}")
+            logger.info(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
         
     def load_model(self):
         """Load the Canary-Qwen model"""
@@ -32,6 +36,11 @@ class CanaryQwenInterface:
             logger.info("Loading Canary-Qwen-2.5B model...")
             # Use the model ID directly - it will automatically use cached version
             self.model = SALM.from_pretrained('nvidia/canary-qwen-2.5b')
+            
+            # Move model to GPU if available
+            if self.device == "cuda":
+                self.model.cuda()
+                logger.info("Model moved to GPU")
             
             self.model.eval()
             logger.info("Model loaded successfully!")
@@ -91,7 +100,9 @@ class CanaryQwenInterface:
             if os.path.exists(processed_audio):
                 os.remove(processed_audio)
             
-            return transcript.strip()
+            # Save transcript for later use
+            self.last_transcript = transcript.strip()
+            return self.last_transcript
             
         except Exception as e:
             logger.error(f"Transcription failed: {str(e)}")
@@ -127,28 +138,36 @@ class CanaryQwenInterface:
 # Initialize the interface
 canary_interface = CanaryQwenInterface()
 
-def transcribe_and_analyze(audio_file, llm_prompt: str) -> Tuple[str, str]:
-    """Main function to handle both transcription and LLM analysis"""
+def transcribe_only(audio_file) -> str:
+    """Transcribe audio only"""
     if audio_file is None:
-        return "❌ Please upload an audio file.", ""
+        return "❌ Please upload an audio file."
     
     try:
-        # Step 1: Transcribe audio
         transcript = canary_interface.transcribe_audio(audio_file)
-        
-        if transcript.startswith("❌"):
-            return transcript, ""
-        
-        # Step 2: LLM analysis if prompt provided
-        llm_response = ""
-        if llm_prompt and llm_prompt.strip():
-            llm_response = canary_interface.llm_inference(transcript, llm_prompt)
-        
-        return transcript, llm_response
-        
+        return transcript
     except Exception as e:
-        logger.error(f"Processing failed: {str(e)}")
-        return f"❌ Processing failed: {str(e)}", ""
+        logger.error(f"Transcription failed: {str(e)}")
+        return f"❌ Transcription failed: {str(e)}"
+
+def analyze_transcript(llm_prompt: str) -> str:
+    """Analyze the last transcript with LLM"""
+    if not canary_interface.last_transcript:
+        return "❌ No transcript available. Please transcribe an audio file first."
+    
+    if not llm_prompt or not llm_prompt.strip():
+        return "❌ Please provide a prompt for analysis."
+    
+    try:
+        response = canary_interface.llm_inference(canary_interface.last_transcript, llm_prompt)
+        return response
+    except Exception as e:
+        logger.error(f"LLM analysis failed: {str(e)}")
+        return f"❌ LLM analysis failed: {str(e)}"
+
+def get_current_transcript() -> str:
+    """Get the current transcript"""
+    return canary_interface.last_transcript if canary_interface.last_transcript else "No transcript available"
 
 def create_gradio_interface():
     """Create the Gradio interface"""
@@ -177,66 +196,97 @@ def create_gradio_interface():
     with gr.Blocks(css=css, title="Canary-Qwen Audio Transcription") as demo:
         gr.HTML("""
         <div class="title">🎵 Canary-Qwen Audio Transcription</div>
-        <div class="subtitle">Upload audio → Get transcription → Ask questions about the content</div>
+        <div class="subtitle">Two-stage process: Transcribe audio first, then analyze with LLM</div>
         """)
         
-        with gr.Row():
-            with gr.Column(scale=1):
-                audio_input = gr.Audio(
-                    label="Upload Audio File",
-                    type="filepath",
-                    sources=["upload", "microphone"]
+        with gr.Tabs():
+            with gr.TabItem("🎙️ Audio Transcription"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        audio_input = gr.Audio(
+                            label="Upload Audio File",
+                            type="filepath",
+                            sources=["upload", "microphone"]
+                        )
+                        transcribe_btn = gr.Button("🎯 Transcribe Audio", variant="primary", size="lg")
+                        
+                    with gr.Column(scale=1):
+                        transcript_output = gr.Textbox(
+                            label="📝 Transcript",
+                            lines=12,
+                            max_lines=20,
+                            show_copy_button=True
+                        )
+                
+                # Event handlers for transcription
+                transcribe_btn.click(
+                    fn=transcribe_only,
+                    inputs=[audio_input],
+                    outputs=[transcript_output]
                 )
                 
-                llm_prompt = gr.Textbox(
-                    label="LLM Prompt (Optional)",
-                    placeholder="Ask a question about the transcript (e.g., 'Summarize the main points', 'What is the speaker's opinion about...?')",
-                    lines=3
+                # Auto-transcribe on audio upload
+                audio_input.change(
+                    fn=transcribe_only,
+                    inputs=[audio_input],
+                    outputs=[transcript_output]
+                )
+            
+            with gr.TabItem("🤖 Transcript Analysis"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        current_transcript = gr.Textbox(
+                            label="📄 Current Transcript",
+                            lines=6,
+                            max_lines=10,
+                            interactive=False,
+                            value=get_current_transcript
+                        )
+                        
+                        refresh_transcript_btn = gr.Button("🔄 Refresh Transcript", size="sm")
+                        
+                        llm_prompt = gr.Textbox(
+                            label="💭 Analysis Prompt",
+                            placeholder="Ask a question about the transcript (e.g., 'Summarize the main points', 'What is the speaker's opinion about...?')",
+                            lines=3
+                        )
+                        
+                        analyze_btn = gr.Button("🤖 Analyze Transcript", variant="primary", size="lg")
+                        
+                    with gr.Column(scale=1):
+                        llm_output = gr.Textbox(
+                            label="🧠 LLM Analysis",
+                            lines=12,
+                            max_lines=20,
+                            show_copy_button=True
+                        )
+                
+                # Examples section
+                gr.Examples(
+                    examples=[
+                        ["Summarize the main points discussed in the audio."],
+                        ["What is the speaker's tone and emotion?"],
+                        ["Extract any important dates, names, or numbers mentioned."],
+                        ["What questions does the speaker ask?"],
+                        ["Identify the key topics covered in this audio."],
+                        ["List any action items or next steps mentioned."],
+                        ["What are the key takeaways from this audio?"]
+                    ],
+                    inputs=[llm_prompt],
+                    label="Example Analysis Prompts"
                 )
                 
-                submit_btn = gr.Button("🎯 Transcribe & Analyze", variant="primary", size="lg")
-                
-            with gr.Column(scale=1):
-                transcript_output = gr.Textbox(
-                    label="📝 Transcript",
-                    lines=8,
-                    max_lines=15,
-                    show_copy_button=True
+                # Event handlers for analysis
+                analyze_btn.click(
+                    fn=analyze_transcript,
+                    inputs=[llm_prompt],
+                    outputs=[llm_output]
                 )
                 
-                llm_output = gr.Textbox(
-                    label="🤖 LLM Analysis",
-                    lines=8,
-                    max_lines=15,
-                    show_copy_button=True
+                refresh_transcript_btn.click(
+                    fn=get_current_transcript,
+                    outputs=[current_transcript]
                 )
-        
-        # Examples section
-        gr.Examples(
-            examples=[
-                [None, "Summarize the main points discussed in the audio."],
-                [None, "What is the speaker's tone and emotion?"],
-                [None, "Extract any important dates, names, or numbers mentioned."],
-                [None, "What questions does the speaker ask?"],
-                [None, "Identify the key topics covered in this audio."]
-            ],
-            inputs=[audio_input, llm_prompt],
-            label="Example Prompts"
-        )
-        
-        # Event handlers
-        submit_btn.click(
-            fn=transcribe_and_analyze,
-            inputs=[audio_input, llm_prompt],
-            outputs=[transcript_output, llm_output]
-        )
-        
-        # Auto-submit on audio upload
-        audio_input.change(
-            fn=transcribe_and_analyze,
-            inputs=[audio_input, llm_prompt],
-            outputs=[transcript_output, llm_output]
-        )
         
         # Model info
         gr.HTML("""
